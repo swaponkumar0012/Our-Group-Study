@@ -1,11 +1,22 @@
 import { PrismaClient } from '@prisma/client'
 
 const prismaClientSingleton = () => {
-  return new PrismaClient()
+    const url = process.env.DATABASE_URL;
+    if (url) {
+        console.log('Using runtime DATABASE_URL');
+        return new PrismaClient({
+            datasources: {
+                db: {
+                    url: url
+                }
+            }
+        });
+    }
+    return new PrismaClient()
 }
 
 declare global {
-  var prisma: undefined | ReturnType<typeof prismaClientSingleton>
+    var prisma: undefined | ReturnType<typeof prismaClientSingleton>
 }
 
 const prisma = globalThis.prisma ?? prismaClientSingleton()
