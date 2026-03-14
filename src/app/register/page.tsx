@@ -19,7 +19,10 @@ export default function RegisterPage() {
         setError('');
 
         try {
-            await register(role, username, name, password);
+            const res = await register(role, username, name, password);
+            if (res && res.error) {
+                setError(res.error);
+            }
         } catch (err: any) {
             setError(err.message || 'Registration failed');
         } finally {

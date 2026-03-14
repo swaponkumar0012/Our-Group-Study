@@ -6,58 +6,68 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 
 export async function login(role: string, username: string) {
-    const user = await prisma.user.findFirst({
-        where: { username, role },
-    });
+    try {
+        const user = await prisma.user.findFirst({
+            where: { username, role },
+        });
 
-    if (!user) {
-        throw new Error('ID not found or invalid role. Please register first.');
+        if (!user) {
+            return { error: 'ID not found or invalid role. Please register first.' };
+        }
+
+        const cookieStore = await cookies();
+        cookieStore.set('session', JSON.stringify({
+            id: user.id,
+            name: user.name,
+            role: user.role,
+        }), {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 60 * 60 * 24 * 7, // 1 week
+            path: '/',
+        });
+    } catch (e: any) {
+        console.error("Login error:", e);
+        return { error: 'An unexpected error occurred: ' + (e.message || 'Unknown error') };
     }
-
-    const cookieStore = await cookies();
-    cookieStore.set('session', JSON.stringify({
-        id: user.id,
-        name: user.name,
-        role: user.role,
-    }), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 7, // 1 week
-        path: '/',
-    });
 
     redirect('/dashboard');
 }
 
 export async function register(role: string, username: string, name: string, password?: string) {
-    const existingUser = await prisma.user.findUnique({
-        where: { username },
-    });
+    try {
+        const existingUser = await prisma.user.findUnique({
+            where: { username },
+        });
 
-    if (existingUser) {
-        throw new Error('Username / ID already exists. Please choose another.');
+        if (existingUser) {
+            return { error: 'Username / ID already exists. Please choose another.' };
+        }
+
+        const user = await prisma.user.create({
+            data: {
+                username,
+                name,
+                role,
+                password: password || 'password123',
+            },
+        });
+
+        const cookieStore = await cookies();
+        cookieStore.set('session', JSON.stringify({
+            id: user.id,
+            name: user.name,
+            role: user.role,
+        }), {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            maxAge: 60 * 60 * 24 * 7, // 1 week
+            path: '/',
+        });
+    } catch (e: any) {
+        console.error("Registration error:", e);
+        return { error: 'An unexpected error occurred: ' + (e.message || 'Unknown error') };
     }
-
-    const user = await prisma.user.create({
-        data: {
-            username,
-            name,
-            role,
-            password: password || 'password123',
-        },
-    });
-
-    const cookieStore = await cookies();
-    cookieStore.set('session', JSON.stringify({
-        id: user.id,
-        name: user.name,
-        role: user.role,
-    }), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        maxAge: 60 * 60 * 24 * 7, // 1 week
-        path: '/',
-    });
 
     redirect('/dashboard');
 }
@@ -69,10 +79,15 @@ export async function logout() {
 }
 
 export async function getSession() {
-    const cookieStore = await cookies();
-    const session = cookieStore.get('session');
-    if (!session) return null;
-    return JSON.parse(session.value);
+    try {
+        const cookieStore = await cookies();
+        const session = cookieStore.get('session');
+        if (!session) return null;
+        return JSON.parse(session.value);
+    } catch (e) {
+        console.error("Session parsing error:", e);
+        return null;
+    }
 }
 
 export async function createGroup(
@@ -138,19 +153,24 @@ export async function deleteGroup(id: string) {
 }
 
 export async function getGroups() {
-    const session = await getSession();
-    if (!session) return [];
+    try {
+        const session = await getSession();
+        if (!session) return [];
 
-    if (session.role === 'TEACHER') {
-        return prisma.group.findMany({
-            where: { teacherId: session.id },
-            include: { quizzes: true },
-        });
-    } else {
-        // For now, students see all groups since we don't have join logic yet
-        return prisma.group.findMany({
-            include: { quizzes: true },
-        });
+        if (session.role === 'TEACHER') {
+            return await prisma.group.findMany({
+                where: { teacherId: session.id },
+                include: { quizzes: true },
+            });
+        } else {
+            // For now, students see all groups since we don't have join logic yet
+            return await prisma.group.findMany({
+                include: { quizzes: true },
+            });
+        }
+    } catch (e) {
+        console.error("Error fetching groups:", e);
+        return [];
     }
 }
 

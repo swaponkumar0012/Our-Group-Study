@@ -20,7 +20,10 @@ export default function LoginPage() {
         setError('');
 
         try {
-            await login(role, username);
+            const res = await login(role, username);
+            if (res && res.error) {
+                setError(res.error);
+            }
         } catch (err: any) {
             setError(err.message || 'Something went wrong');
         } finally {
