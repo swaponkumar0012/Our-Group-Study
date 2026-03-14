@@ -3,6 +3,8 @@ import { LogOut, Plus, BookOpen, MessageSquare, Trophy, Clock, ChevronRight } fr
 import Link from 'next/link';
 import DeleteGroupButton from '@/components/DeleteGroupButton';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
     const session = await getSession();
     const groups = await getGroups();

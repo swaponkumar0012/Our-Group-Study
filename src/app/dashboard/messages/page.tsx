@@ -5,7 +5,9 @@ import { getMessages, getSession, sendMessage } from '@/lib/actions';
 import { MessageSquare, ArrowLeft, User, BookOpen, Send, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
-export default function MessagesPage() {
+export const dynamic = 'force-dynamic';
+
+export default async function MessagesPage() {
     const [messages, setMessages] = useState<any[]>([]);
     const [session, setSession] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
